@@ -113,7 +113,7 @@
       );
     }
 
-    //react map
+    //react map 사용
     function Favorites({ favorites }) {
       if (favorites.length === 0) {
         return <div className="favCatImage">사진 위 하트를 눌러 고양이 사진을 저장 해보세요!</div>;
@@ -127,7 +127,7 @@
       );
     }
 
-    // ES6+ 디스트럭처링 문법 적용: (props) -> ({img}) JS 그대로 넣어도 된다.
+    // ES6+ 디스트럭처링 문법 적용: (props) -> ({img})
     const MainCard = ({ img, onHeartClick, alreadyFavorite }) => {
       const heartIcon = alreadyFavorite ? "💖" : "🤍";
 
@@ -196,7 +196,7 @@
       );
     };
 
-    const target = document.querySelector('#app'); //id값을 찾을땐 #으로 시작.
+    const target = document.querySelector('#app');
     ReactDOM.render(<App />, target);
 
   </script>
