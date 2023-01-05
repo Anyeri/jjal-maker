@@ -29,6 +29,12 @@
   .favorites img {
     width: 150px;
   }
+
+  .favCatImage {
+    width: 98%;
+    text-align: center;
+    font-weight: bold;
+  }
 </style>
 
 <body>
@@ -42,7 +48,7 @@
   <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
   <script type="text/babel">
-    const jsonLocalStorage = {
+    const jsonLocalStorage = { //브라우저 기능. 7일까지 데이터 저장가능
       setItem: (key, value) => {
         localStorage.setItem(key, JSON.stringify(value));
       },
@@ -51,16 +57,22 @@
       },
     };
 
+    const fetchCat = async (text) => { //생성 버튼을 눌렀을때 fetch API 호출
+      const OPEN_API_DOMAIN = "https://cataas.com";
+      const response = await fetch(`${OPEN_API_DOMAIN}/cat/says/${text}?json=true`);
+      const responseJson = await response.json();
+      return `${OPEN_API_DOMAIN}/${responseJson.url}`;
+    };
+
     const Title = (props) => {
       return (
         <h1>{props.children}</h1>
       )
     };
-    //컴포넌트는 무조건 대문자로 시작. 엘리먼트는 소문자
     //컴포넌트에(const) return 없이 사용 하려면 (); 로 묶으면 된다. 굳이 return 사용 안해도 됨
     const Form = ({ updateMainCat }) => {
       const includesHangul = (text) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/i.test(text);
-      const [value, setValue] = React.useState('');
+      const [value, setValue] = React.useState('');//input에 입력한 값 관리
       const [errorMessage, setErrorMessage] = React.useState('');
 
       function handleInputChange(e) {
@@ -81,9 +93,8 @@
           setErrorMessage("빈 값으로 만들 수 없습니다!");
           return;
         }
-        updateMainCat();
+        updateMainCat(value);
       }
-
       return (
         <form onSubmit={handleFormSubmit}>
           <input type="text" name="name" placeholder="영어 대사를 입력해주세요" value={value} onChange={handleInputChange} />
@@ -104,45 +115,66 @@
 
     //react map
     function Favorites({ favorites }) {
-
+      if (favorites.length === 0) {
+        return <div className="favCatImage">사진 위 하트를 눌러 고양이 사진을 저장 해보세요!</div>;
+      }
       return (
         <ul className="favorites">
-          {favorites.map((cat) => ( //favorites 배열
+          {favorites.map((cat) => (
             <CatItem img={cat} key={cat} />
           ))}
         </ul>
       );
     }
 
-    // ES6+ 디스트럭처링 문법 적용: (props) -> ({img}) JS 그대로 넣어도 된다. JS니까 {} 빼먹지 말고.
-    const MainCard = ({ img, onHeartClick }) => {
+    // ES6+ 디스트럭처링 문법 적용: (props) -> ({img}) JS 그대로 넣어도 된다.
+    const MainCard = ({ img, onHeartClick, alreadyFavorite }) => {
+      const heartIcon = alreadyFavorite ? "💖" : "🤍";
+
       return (
         <div className="main-card">
           <img src={img} alt="냥이" width="400" />
-          <button onClick={onHeartClick}>🤍</button>
+          <button onClick={onHeartClick}>{heartIcon}</button>
         </div>
       );
     };
 
-    //부모(main)
+    //(main)
     const App = () => {
       const CAT1 = "https://cataas.com/cat/HSENVDU4ZMqy7KQ0/says/react";
       const CAT2 = "https://cataas.com/cat/BxqL2EjFmtxDkAm2/says/inflearn";
       const CAT3 = "https://cataas.com/cat/18MD6byVC1yKGpXp/says/JavaScript";
 
       //상태와 초기값 설정, 값을 동적으로 보여주기 위해 씀
-      const [counter, setCounter] = React.useState(jsonLocalStorage.getItem("counter") || 1); //1은 상태의 초기값
-      const [mainCat, setMainCat] = React.useState(CAT1); //CAT1은 상태의 초기값
-      const [favorites, setFavorites] = React.useState(jsonLocalStorage.getItem("favorites") || []);
+      const [counter, setCounter] = React.useState(() => {
+        return jsonLocalStorage.getItem("counter");
+      });
+      const [mainCat, setMainCat] = React.useState(CAT1);
 
-      function updateMainCat() {
-        //기본적으로 form 안에다가 값을 넘겨주면 refresh가 되는데 이걸 막기위해 event 썼음.
-        setMainCat(CAT2);
-        const nextCounter = counter + 1;
-        setCounter(nextCounter);
-        jsonLocalStorage.setItem("counter", nextCounter);
+      const [favorites, setFavorites] = React.useState(() => {
+        return jsonLocalStorage.getItem("favorites") || [];
+      });
+
+      async function setInitialCat() {
+        const newCat = await fetchCat("Welcome !");//fetch api 데이터 가져오기
+        console.log(newCat);
+        setMainCat(newCat);
       }
+      React.useEffect(() => {
+        setInitialCat();
+      }, []);
 
+      async function updateMainCat(value) {
+        const newCat = await fetchCat(value);//fetch api 데이터 가져오기
+        setMainCat(newCat);
+
+
+        setCounter((prev) => {
+          const nextCounter = prev + 1;
+          jsonLocalStorage.setItem("counter", nextCounter);
+          return nextCounter;
+        })
+      }
 
       function handleHeartClick() {
         const nextFavorites = [...favorites, mainCat]
@@ -150,21 +182,22 @@
         jsonLocalStorage.setItem("favorites", nextFavorites);
       }
 
+      const alreadyFavorite = favorites.includes(mainCat);
+
+      const counterTitle = counter === null ? "" : counter + "번째";
+
       return (
         <div>
-          <Title>{counter} 번째 고양이 가라사대</Title>
+          <Title>{counterTitle} 고양이 가라사대</Title>
           <Form updateMainCat={updateMainCat} />
-          <MainCard img={mainCat} onHeartClick={handleHeartClick} />
+          <MainCard img={mainCat} onHeartClick={handleHeartClick} alreadyFavorite={alreadyFavorite} />
           <Favorites favorites={favorites} />
         </div>
       );
     };
 
-
-    const 여기다가그려 = document.querySelector('#app'); //id값을 찾을땐 #으로 시작.
-    // catItem을 리액트를 사용해서 여기다가 그려라 라는 뜻이다.
-    ReactDOM.render(<App />, 여기다가그려);
-
+    const target = document.querySelector('#app'); //id값을 찾을땐 #으로 시작.
+    ReactDOM.render(<App />, target);
 
   </script>
 </body>
